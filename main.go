@@ -29,19 +29,28 @@ func main() {
 	failOnError(err, "Failed to create a channel")
 	defer ch.Close()
 
-	queueName := "compilation_requests"
-	q, err := ch.QueueDeclare(
-		queueName,
+	compilationQueue, err := ch.QueueDeclare(
+		"compilation_requests",
 		true,
 		false,
 		false,
 		false,
 		nil,
 	)
-	failOnError(err, "Failed to declare queue")
+	failOnError(err, "Failed to declare compilation_requests queue")
 
-	msgs, err := ch.Consume(
-		q.Name,
+	triviaQueue, err := ch.QueueDeclare(
+		"trivia_submissions",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	failOnError(err, "Failed to declare trivia_submissions queue")
+
+	compilationMsgs, err := ch.Consume(
+		compilationQueue.Name,
 		"",
 		false,
 		false,
@@ -49,25 +58,60 @@ func main() {
 		false,
 		nil,
 	)
-	failOnError(err, "Failed to register a consumer")
+	failOnError(err, "Failed to register a consumer for compilation_requests")
+
+	triviaMsgs, err := ch.Consume(
+		triviaQueue.Name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	failOnError(err, "Failed to register a consumer for trivia_submissions")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		for msg := range msgs {
-			log.Printf("Received a new message: %s", msg.Body)
+	numCompilationRequestWorkers := 5
+	for i := 0; i < numCompilationRequestWorkers; i++ {
+		go compilationWorker(i, compilationMsgs)
+	}
 
-			time.Sleep(2 * time.Second)
+	numTriviaWorkers := 2
+	for i := 0; i < numTriviaWorkers; i++ {
+		go triviaWorker(i, triviaMsgs)
+	}
 
-			if err := msg.Ack(false); err != nil {
-				log.Printf("Failed to ack message: %v", err)
-			} else {
-				log.Println("Message ack'd")
-			}
-		}
-	}()
-
-	log.Println("Worker is running. Exit with CTRL + C")
+	log.Println("Workers are running. Exit with CTRL + C")
 	<-ctx.Done()
+}
+
+func compilationWorker(id int, msgs <-chan ampq.Delivery) {
+	for msg := range msgs {
+		log.Printf("[Compilation Worker %d] Received message: %s", id, msg.Body)
+
+		time.Sleep(2 * time.Second)
+
+		if err := msg.Ack(false); err != nil {
+			log.Printf("[Compilation Worker %d] Failed to ack message: %v", id, err)
+		} else {
+			log.Printf("[Compilation Worker %d] Message ack'd", id)
+		}
+	}
+}
+
+func triviaWorker(id int, msgs <-chan ampq.Delivery) {
+	for msg := range msgs {
+		log.Printf("[Trivia Worker %d] Received message: %s", id, msg.Body)
+
+		time.Sleep(3 * time.Second)
+
+		if err := msg.Ack(false); err != nil {
+			log.Printf("[Trivia Worker %d] Failed to ack message: %v", id, err)
+		} else {
+			log.Printf("[Trivia Worker %d] Message ack'd", id)
+		}
+	}
 }
