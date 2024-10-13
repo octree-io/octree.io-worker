@@ -8,23 +8,6 @@ import (
 )
 
 func PythonHarness(code string, args map[string]string, testCases []map[string]interface{}, returnType string) string {
-	pythonDataStructures := `class ListNode:
-    def __init__(self, val=0, next=None):
-        self.val = val
-        self.next = next
-
-class TreeNode:
-    def __init__(self, val=0, left=None, right=None):
-        self.val = val
-        self.left = left
-        self.right = right
-
-class GraphNode:
-    def __init__(self, val=0, neighbors=None):
-        self.val = val
-        self.neighbors = neighbors if neighbors is not None else []
-`
-
 	pyArgs, err := utils.JsonToPython(args)
 	if err != nil {
 		log.Fatal("Error converting JSON to Python")
@@ -44,7 +27,21 @@ import array
 import bisect
 import heapq
 
-%s
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class GraphNode:
+    def __init__(self, val=0, neighbors=None):
+        self.val = val
+        self.neighbors = neighbors if neighbors is not None else []
 
 %s
 
@@ -153,7 +150,7 @@ def run_test_cases():
         result = solution.solve(*method_args)
 
         if isinstance(result, TreeNode):
-            if return_type == "int":
+            if return_type == "TreeNode-int":
                 print(result.val)
             else:
                 print(tree_to_list(result))
@@ -166,7 +163,7 @@ def run_test_cases():
                 print(result)
 
 run_test_cases()
-`, pythonDataStructures, code, pyArgs, pyTestCases, returnType)
+`, code, pyArgs, pyTestCases, returnType)
 
 	return pythonCode
 }

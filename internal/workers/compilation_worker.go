@@ -2,6 +2,7 @@ package workers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -41,44 +42,149 @@ type CompilerExplorerResponse struct {
 func processCompilationRequest() {
 	start := time.Now()
 
+	language := "java"
+
+	// 	code := `class Solution {
+	//     public List<List<String>> solve(List<String> words) {
+	//         Map<String, List<String>> anagramGroups = new HashMap<>();
+
+	//         for (String word : words) {
+	//             char[] sortedChars = word.toCharArray();
+	//             Arrays.sort(sortedChars);
+	//             String sortedWord = new String(sortedChars);
+
+	//             if (!anagramGroups.containsKey(sortedWord)) {
+	//                 anagramGroups.put(sortedWord, new ArrayList<>());
+	//             }
+	//             anagramGroups.get(sortedWord).add(word);
+	//         }
+
+	//         return new ArrayList<>(anagramGroups.values());
+	//     }
+	// }`
+
+	// 	args := map[string]string{
+	// 		"words": "string[]",
+	// 	}
+
+	// 	testCases := []map[string]interface{}{
+	// 		{
+	// 			"words":  []interface{}{"eat", "tea", "tan", "ate", "nat", "bat"},
+	// 			"output": []interface{}{[]interface{}{"eat", "tea", "ate"}, []interface{}{"tan", "nat"}, []interface{}{"bat"}},
+	// 		},
+	// 		{
+	// 			"words":  []interface{}{"abc", "bca", "cab", "dog", "god", "xyz"},
+	// 			"output": []interface{}{[]interface{}{"abc", "bca", "cab"}, []interface{}{"dog", "god"}, []interface{}{"xyz"}},
+	// 		},
+	// 		{
+	// 			"words":  []interface{}{"apple", "pale", "peal", "leap"},
+	// 			"output": []interface{}{[]interface{}{"apple"}, []interface{}{"pale", "peal", "leap"}},
+	// 		},
+	// 	}
+
+	// 	returnType := "string[][]"
+
+	// 	code := `class Solution {
+	//     public TreeNode solve(TreeNode root, TreeNode p, TreeNode q) {
+	//         if (root == null || root == p || root == q) return root;
+
+	//         TreeNode left = solve(root.left, p, q);
+	//         TreeNode right = solve(root.right, p, q);
+
+	//         if (left != null && right != null) return root;
+	//         return left != null ? left : right;
+	//     }
+	// }`
+
+	// 	args := map[string]string{
+	// 		"root": "TreeNode",
+	// 		"p":    "TreeNode",
+	// 		"q":    "TreeNode",
+	// 	}
+
+	// 	testCases := []map[string]interface{}{
+	// 		{
+	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
+	// 			"p":      5,                                                  // Node p
+	// 			"q":      1,                                                  // Node q
+	// 			"output": 3,                                                  // Expected LCA
+	// 		},
+	// 		{
+	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
+	// 			"p":      5,                                                  // Node p
+	// 			"q":      4,                                                  // Node q
+	// 			"output": 5,                                                  // Expected LCA
+	// 		},
+	// 		{
+	// 			"root":   []interface{}{1, 2}, // Tree structure
+	// 			"p":      1,                   // Node p
+	// 			"q":      2,                   // Node q
+	// 			"output": 1,                   // Expected LCA
+	// 		},
+	// 	}
+
+	// 	returnType := "TreeNode-int"
+
+	code := `class Solution {
+    public ListNode solve(ListNode head) {
+        ListNode prev = null;
+        ListNode current = head;
+
+        while (current != null) {
+            ListNode nextNode = current.next;
+            current.next = prev;
+            prev = current;
+            current = nextNode;
+        }
+        return prev;
+    }
+}
+`
+
+	// Input type: A linked list (represented as an array for test cases)
 	args := map[string]string{
-		"nums":   "int[]",
-		"target": "int",
+		"head": "ListNode", // The linked list to be reversed
 	}
 
+	// Test cases for the reverse linked list problem
 	testCases := []map[string]interface{}{
 		{
-			"nums":   []interface{}{2, 7, 11, 15},
-			"target": 9,
-			"output": []interface{}{0, 1},
+			"head":   []interface{}{1, 2, 3, 4, 5}, // Initial linked list: 1 -> 2 -> 3 -> 4 -> 5
+			"output": []interface{}{5, 4, 3, 2, 1}, // Reversed linked list: 5 -> 4 -> 3 -> 2 -> 1
 		},
 		{
-			"nums":   []interface{}{3, 2, 4},
-			"target": 6,
-			"output": []interface{}{1, 2},
+			"head":   []interface{}{1, 2}, // Initial linked list: 1 -> 2
+			"output": []interface{}{2, 1}, // Reversed linked list: 2 -> 1
 		},
 		{
-			"nums":   []interface{}{3, 3},
-			"target": 6,
-			"output": []interface{}{0, 1},
+			"head":   []interface{}{}, // Empty list
+			"output": []interface{}{}, // Still empty after reversal
 		},
 	}
 
-	code := `class Solution:
-    def solve(self, nums: List[int], target: int) -> List[int]:
-        seen = {}
-        for i, num in enumerate(nums):
-            complement = target - num
-            if complement in seen:
-                return [seen[complement], i]
-            seen[num] = i
-        return []`
+	returnType := "ListNode"
 
-	returnType := "int[]"
+	var wrappedCode string
 
-	wrappedCode := testharness.PythonHarness(code, args, testCases, returnType)
+	switch language {
+	case "python":
+		wrappedCode = testharness.PythonHarness(code, args, testCases, returnType)
 
-	output, err := facade.CompilerExplorer("python", wrappedCode)
+	case "cpp":
+		wrappedCode = testharness.CppHarness(code, args, testCases, returnType)
+
+	case "csharp":
+		wrappedCode = testharness.CsharpHarness(code, args, testCases, returnType)
+
+	case "java":
+		wrappedCode = testharness.JavaHarness(code, args, testCases, returnType)
+
+	default:
+		fmt.Println("Unsupported language")
+		return
+	}
+
+	output, err := facade.CompilerExplorer(language, wrappedCode)
 	if err != nil {
 		log.Printf("Error while executing compile: %v", err)
 	}
@@ -89,10 +195,6 @@ func processCompilationRequest() {
 	elapsed := time.Since(start)
 
 	log.Printf("Request took %s to execute", elapsed)
-
-	if jsonOutput.Code != 0 {
-		log.Println(output)
-	}
 
 	if len(testCases) != len(jsonOutput.Stdout) {
 		log.Println("Test cases and stdout lengths differ")
