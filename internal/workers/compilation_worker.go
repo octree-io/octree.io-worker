@@ -42,104 +42,94 @@ type CompilerExplorerResponse struct {
 func processCompilationRequest() {
 	start := time.Now()
 
-	language := "java"
+	language := "ruby"
 
-	// 	code := `class Solution {
-	//     public List<List<String>> solve(List<String> words) {
-	//         Map<String, List<String>> anagramGroups = new HashMap<>();
+	// code := `def solve(words)
+	//   anagram_groups = Hash.new { |hash, key| hash[key] = [] }
 
-	//         for (String word : words) {
-	//             char[] sortedChars = word.toCharArray();
-	//             Arrays.sort(sortedChars);
-	//             String sortedWord = new String(sortedChars);
+	//   words.each do |word|
+	//     sorted_word = word.chars.sort.join
+	//     anagram_groups[sorted_word] << word
+	//   end
 
-	//             if (!anagramGroups.containsKey(sortedWord)) {
-	//                 anagramGroups.put(sortedWord, new ArrayList<>());
-	//             }
-	//             anagramGroups.get(sortedWord).add(word);
-	//         }
+	//   anagram_groups.values
+	// end`
 
-	//         return new ArrayList<>(anagramGroups.values());
-	//     }
-	// }`
+	// args := map[string]string{
+	// 	"words": "string[]",
+	// }
 
-	// 	args := map[string]string{
-	// 		"words": "string[]",
-	// 	}
+	// testCases := []map[string]interface{}{
+	// 	{
+	// 		"words":  []interface{}{"eat", "tea", "tan", "ate", "nat", "bat"},
+	// 		"output": []interface{}{[]interface{}{"eat", "tea", "ate"}, []interface{}{"tan", "nat"}, []interface{}{"bat"}},
+	// 	},
+	// 	{
+	// 		"words":  []interface{}{"abc", "bca", "cab", "dog", "god", "xyz"},
+	// 		"output": []interface{}{[]interface{}{"abc", "bca", "cab"}, []interface{}{"dog", "god"}, []interface{}{"xyz"}},
+	// 	},
+	// 	{
+	// 		"words":  []interface{}{"apple", "pale", "peal", "leap"},
+	// 		"output": []interface{}{[]interface{}{"apple"}, []interface{}{"pale", "peal", "leap"}},
+	// 	},
+	// }
 
-	// 	testCases := []map[string]interface{}{
-	// 		{
-	// 			"words":  []interface{}{"eat", "tea", "tan", "ate", "nat", "bat"},
-	// 			"output": []interface{}{[]interface{}{"eat", "tea", "ate"}, []interface{}{"tan", "nat"}, []interface{}{"bat"}},
-	// 		},
-	// 		{
-	// 			"words":  []interface{}{"abc", "bca", "cab", "dog", "god", "xyz"},
-	// 			"output": []interface{}{[]interface{}{"abc", "bca", "cab"}, []interface{}{"dog", "god"}, []interface{}{"xyz"}},
-	// 		},
-	// 		{
-	// 			"words":  []interface{}{"apple", "pale", "peal", "leap"},
-	// 			"output": []interface{}{[]interface{}{"apple"}, []interface{}{"pale", "peal", "leap"}},
-	// 		},
-	// 	}
+	// returnType := "string[][]"
 
-	// 	returnType := "string[][]"
+	// code := `
+	//   def solve(root, p, q)
+	//     return root if root.nil? || root == p || root == q
 
-	// 	code := `class Solution {
-	//     public TreeNode solve(TreeNode root, TreeNode p, TreeNode q) {
-	//         if (root == null || root == p || root == q) return root;
+	//     left = solve(root.left, p, q)
+	//     right = solve(root.right, p, q)
 
-	//         TreeNode left = solve(root.left, p, q);
-	//         TreeNode right = solve(root.right, p, q);
+	//     return root if left && right
+	//     left ? left : right
+	//   end
+	// `
 
-	//         if (left != null && right != null) return root;
-	//         return left != null ? left : right;
-	//     }
-	// }`
+	// args := map[string]string{
+	// 	"root": "TreeNode",
+	// 	"p":    "TreeNode",
+	// 	"q":    "TreeNode",
+	// }
 
-	// 	args := map[string]string{
-	// 		"root": "TreeNode",
-	// 		"p":    "TreeNode",
-	// 		"q":    "TreeNode",
-	// 	}
+	// testCases := []map[string]interface{}{
+	// 	{
+	// 		"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
+	// 		"p":      5,                                                  // Node p
+	// 		"q":      1,                                                  // Node q
+	// 		"output": 3,                                                  // Expected LCA
+	// 	},
+	// 	{
+	// 		"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
+	// 		"p":      5,                                                  // Node p
+	// 		"q":      4,                                                  // Node q
+	// 		"output": 5,                                                  // Expected LCA
+	// 	},
+	// 	{
+	// 		"root":   []interface{}{1, 2}, // Tree structure
+	// 		"p":      1,                   // Node p
+	// 		"q":      2,                   // Node q
+	// 		"output": 1,                   // Expected LCA
+	// 	},
+	// }
 
-	// 	testCases := []map[string]interface{}{
-	// 		{
-	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
-	// 			"p":      5,                                                  // Node p
-	// 			"q":      1,                                                  // Node q
-	// 			"output": 3,                                                  // Expected LCA
-	// 		},
-	// 		{
-	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
-	// 			"p":      5,                                                  // Node p
-	// 			"q":      4,                                                  // Node q
-	// 			"output": 5,                                                  // Expected LCA
-	// 		},
-	// 		{
-	// 			"root":   []interface{}{1, 2}, // Tree structure
-	// 			"p":      1,                   // Node p
-	// 			"q":      2,                   // Node q
-	// 			"output": 1,                   // Expected LCA
-	// 		},
-	// 	}
+	// returnType := "TreeNode-int"
 
-	// 	returnType := "TreeNode-int"
+	code := `def solve(head)
+	  prev = nil
+	  current = head
 
-	code := `class Solution {
-    public ListNode solve(ListNode head) {
-        ListNode prev = null;
-        ListNode current = head;
+	  while current != nil
+	    next_node = current.next
+	    current.next = prev
+	    prev = current
+	    current = next_node
+	  end
 
-        while (current != null) {
-            ListNode nextNode = current.next;
-            current.next = prev;
-            prev = current;
-            current = nextNode;
-        }
-        return prev;
-    }
-}
-`
+	  prev
+	end`
 
 	// Input type: A linked list (represented as an array for test cases)
 	args := map[string]string{
@@ -178,6 +168,9 @@ func processCompilationRequest() {
 
 	case "java":
 		wrappedCode = testharness.JavaHarness(code, args, testCases, returnType)
+
+	case "ruby":
+		wrappedCode = testharness.RubyHarness(code, args, testCases, returnType)
 
 	default:
 		fmt.Println("Unsupported language")

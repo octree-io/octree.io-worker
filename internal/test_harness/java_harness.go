@@ -341,8 +341,6 @@ class TestHarness {
 }
   `, returnType, code, generateJavaTestCases(testCases, args), generateJavaArgs(args), generateJavaArgNames(args), generateJavaMethodArgs(args))
 
-	fmt.Println(harnessCode)
-
 	return harnessCode
 }
 
