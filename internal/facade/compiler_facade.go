@@ -22,7 +22,7 @@ var COMPILERS = map[string]string{
 	"ocaml":      "ocaml5200",
 }
 
-func Compile(language string, code string) (string, error) {
+func CompilerExplorer(language string, code string) (string, error) {
 	compiler, exists := COMPILERS[language]
 
 	if !exists {
