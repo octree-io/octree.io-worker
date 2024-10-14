@@ -255,12 +255,12 @@ int main() {
     testHarness.run();
     return 0;
 }
-`, returnType, code, generateTestCases(args, testCases), generateArgs(args), generateArgNames(args), generateMethodArgs(args))
+`, returnType, code, generateCppTestCases(args, testCases), generateCppArgs(args), generateCppArgNames(args), generateCppMethodArgs(args))
 
 	return harnessCode
 }
 
-func generateTestCases(args map[string]string, testCases []map[string]interface{}) string {
+func generateCppTestCases(args map[string]string, testCases []map[string]interface{}) string {
 	var result []string
 
 	for i, testCase := range testCases {
@@ -304,7 +304,7 @@ func generateTestCases(args map[string]string, testCases []map[string]interface{
 	return strings.Join(result, "\n")
 }
 
-func generateArgs(args map[string]string) string {
+func generateCppArgs(args map[string]string) string {
 	var result []string
 	result = append(result, "std::map<std::string, std::string> args = {")
 	for argName, argType := range args {
@@ -315,7 +315,7 @@ func generateArgs(args map[string]string) string {
 	return strings.Join(result, "\n")
 }
 
-func generateArgNames(args map[string]string) string {
+func generateCppArgNames(args map[string]string) string {
 	var result []string
 	for arg := range args {
 		result = append(result, fmt.Sprintf("\"%s\"", arg))
@@ -323,7 +323,7 @@ func generateArgNames(args map[string]string) string {
 	return strings.Join(result, ", ")
 }
 
-func generateMethodArgs(args map[string]string) string {
+func generateCppMethodArgs(args map[string]string) string {
 	var result []string
 	index := 0
 	for _, argType := range args {
