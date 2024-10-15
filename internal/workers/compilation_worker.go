@@ -42,18 +42,30 @@ type CompilerExplorerResponse struct {
 func processCompilationRequest() {
 	start := time.Now()
 
-	language := "ruby"
+	language := "javascript"
 
-	// code := `def solve(words)
-	//   anagram_groups = Hash.new { |hash, key| hash[key] = [] }
+	// code := `function solve(words) {
+	//   let anagramGroups = {};
 
-	//   words.each do |word|
-	//     sorted_word = word.chars.sort.join
-	//     anagram_groups[sorted_word] << word
-	//   end
+	//   for (let word of words) {
+	//     // Sort the word to use as the key for grouping anagrams
+	//     let sortedWord = word.split("").sort().join("");
 
-	//   anagram_groups.values
-	// end`
+	//     // Insert the word into the corresponding anagram group
+	//     if (!anagramGroups[sortedWord]) {
+	//       anagramGroups[sortedWord] = [];
+	//     }
+	//     anagramGroups[sortedWord].push(word);
+	//   }
+
+	//   // Collect all the grouped anagrams into a result array
+	//   let result = [];
+	//   for (let key in anagramGroups) {
+	//     result.push(anagramGroups[key]);
+	//   }
+
+	//   return result;
+	// }`
 
 	// args := map[string]string{
 	// 	"words": "string[]",
@@ -76,60 +88,95 @@ func processCompilationRequest() {
 
 	// returnType := "string[][]"
 
-	// code := `
-	//   def solve(root, p, q)
-	//     return root if root.nil? || root == p || root == q
+	// 	code := `function solve(root, targetSum) {
+	//     if (!root) return false;
 
-	//     left = solve(root.left, p, q)
-	//     right = solve(root.right, p, q)
+	//     if (!root.left && !root.right) {
+	//         return targetSum === root.val;
+	//     }
 
-	//     return root if left && right
-	//     left ? left : right
-	//   end
-	// `
+	//     const remainingSum = targetSum - root.val;
+	//     return solve(root.left, remainingSum) || solve(root.right, remainingSum);
+	// }`
 
-	// args := map[string]string{
-	// 	"root": "TreeNode",
-	// 	"p":    "TreeNode",
-	// 	"q":    "TreeNode",
-	// }
+	// 	args := map[string]string{
+	// 		"root":      "TreeNode",
+	// 		"targetSum": "int",
+	// 	}
 
-	// testCases := []map[string]interface{}{
-	// 	{
-	// 		"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
-	// 		"p":      5,                                                  // Node p
-	// 		"q":      1,                                                  // Node q
-	// 		"output": 3,                                                  // Expected LCA
-	// 	},
-	// 	{
-	// 		"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
-	// 		"p":      5,                                                  // Node p
-	// 		"q":      4,                                                  // Node q
-	// 		"output": 5,                                                  // Expected LCA
-	// 	},
-	// 	{
-	// 		"root":   []interface{}{1, 2}, // Tree structure
-	// 		"p":      1,                   // Node p
-	// 		"q":      2,                   // Node q
-	// 		"output": 1,                   // Expected LCA
-	// 	},
-	// }
+	// 	testCases := []map[string]interface{}{
+	// 		{
+	// 			"root":      []interface{}{5, 4, 8, 11, nil, 13, 4, 7, 2, nil, nil, nil, 1},
+	// 			"targetSum": 22,
+	// 			"output":    true,
+	// 		},
+	// 		{
+	// 			"root":      []interface{}{1, 2, 3},
+	// 			"targetSum": 5,
+	// 			"output":    false,
+	// 		},
+	// 		{
+	// 			"root":      []interface{}{1, 2},
+	// 			"targetSum": 1,
+	// 			"output":    false,
+	// 		},
+	// 	}
 
-	// returnType := "TreeNode-int"
+	// 	returnType := "bool"
 
-	code := `def solve(head)
-	  prev = nil
-	  current = head
+	// 	code := `var solve = function(root, p, q) {
+	//     if (!root || root === p || root === q) return root;
 
-	  while current != nil
-	    next_node = current.next
-	    current.next = prev
-	    prev = current
-	    current = next_node
-	  end
+	//     const left = solve(root.left, p, q);
+	//     const right = solve(root.right, p, q);
 
-	  prev
-	end`
+	//     if (left && right) return root;
+
+	//     return left ? left : right;
+	// };`
+
+	// 	args := map[string]string{
+	// 		"root": "TreeNode",
+	// 		"p":    "TreeNode",
+	// 		"q":    "TreeNode",
+	// 	}
+
+	// 	testCases := []map[string]interface{}{
+	// 		{
+	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
+	// 			"p":      5,                                                  // Node p
+	// 			"q":      1,                                                  // Node q
+	// 			"output": 3,                                                  // Expected LCA
+	// 		},
+	// 		{
+	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
+	// 			"p":      5,                                                  // Node p
+	// 			"q":      4,                                                  // Node q
+	// 			"output": 5,                                                  // Expected LCA
+	// 		},
+	// 		{
+	// 			"root":   []interface{}{1, 2}, // Tree structure
+	// 			"p":      1,                   // Node p
+	// 			"q":      2,                   // Node q
+	// 			"output": 1,                   // Expected LCA
+	// 		},
+	// 	}
+
+	// 	returnType := "TreeNode-int"
+
+	code := `function solve(head) {
+    let prev = null;
+    let current = head;
+
+    while (current !== null) {
+        let nextNode = current.next;
+        current.next = prev;
+        prev = current;
+        current = nextNode;
+    }
+
+    return prev;
+}`
 
 	// Input type: A linked list (represented as an array for test cases)
 	args := map[string]string{
@@ -171,6 +218,9 @@ func processCompilationRequest() {
 
 	case "ruby":
 		wrappedCode = testharness.RubyHarness(code, args, testCases, returnType)
+
+	case "javascript":
+		wrappedCode = testharness.JavaScriptHarness(code, args, testCases, returnType)
 
 	default:
 		fmt.Println("Unsupported language")
