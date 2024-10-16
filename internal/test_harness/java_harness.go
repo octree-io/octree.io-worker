@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"octree.io-worker/utils"
+	"octree.io-worker/internal/utils"
 )
 
 func JavaHarness(code string, args map[string]string, testCases []map[string]interface{}, returnType string) string {

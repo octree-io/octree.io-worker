@@ -9,7 +9,7 @@ import (
 	ampq "github.com/rabbitmq/amqp091-go"
 	"octree.io-worker/internal/facade"
 	testharness "octree.io-worker/internal/test_harness"
-	"octree.io-worker/utils/converters"
+	"octree.io-worker/internal/utils/converters"
 )
 
 type StdoutItem struct {
@@ -42,51 +42,51 @@ type CompilerExplorerResponse struct {
 func processCompilationRequest() {
 	start := time.Now()
 
-	language := "javascript"
+	language := "typescript"
 
-	// code := `function solve(words) {
-	//   let anagramGroups = {};
+	code := `function solve(words: any) {
+	  let anagramGroups: any = {};
 
-	//   for (let word of words) {
-	//     // Sort the word to use as the key for grouping anagrams
-	//     let sortedWord = word.split("").sort().join("");
+	  for (let word of words) {
+	    // Sort the word to use as the key for grouping anagrams
+	    let sortedWord = word.split("").sort().join("");
 
-	//     // Insert the word into the corresponding anagram group
-	//     if (!anagramGroups[sortedWord]) {
-	//       anagramGroups[sortedWord] = [];
-	//     }
-	//     anagramGroups[sortedWord].push(word);
-	//   }
+	    // Insert the word into the corresponding anagram group
+	    if (!anagramGroups[sortedWord]) {
+	      anagramGroups[sortedWord] = [];
+	    }
+	    anagramGroups[sortedWord].push(word);
+	  }
 
-	//   // Collect all the grouped anagrams into a result array
-	//   let result = [];
-	//   for (let key in anagramGroups) {
-	//     result.push(anagramGroups[key]);
-	//   }
+	  // Collect all the grouped anagrams into a result array
+	  let result = [];
+	  for (let key in anagramGroups) {
+	    result.push(anagramGroups[key]);
+	  }
 
-	//   return result;
-	// }`
+	  return result;
+	}`
 
-	// args := map[string]string{
-	// 	"words": "string[]",
-	// }
+	args := map[string]string{
+		"words": "string[]",
+	}
 
-	// testCases := []map[string]interface{}{
-	// 	{
-	// 		"words":  []interface{}{"eat", "tea", "tan", "ate", "nat", "bat"},
-	// 		"output": []interface{}{[]interface{}{"eat", "tea", "ate"}, []interface{}{"tan", "nat"}, []interface{}{"bat"}},
-	// 	},
-	// 	{
-	// 		"words":  []interface{}{"abc", "bca", "cab", "dog", "god", "xyz"},
-	// 		"output": []interface{}{[]interface{}{"abc", "bca", "cab"}, []interface{}{"dog", "god"}, []interface{}{"xyz"}},
-	// 	},
-	// 	{
-	// 		"words":  []interface{}{"apple", "pale", "peal", "leap"},
-	// 		"output": []interface{}{[]interface{}{"apple"}, []interface{}{"pale", "peal", "leap"}},
-	// 	},
-	// }
+	testCases := []map[string]interface{}{
+		{
+			"words":  []interface{}{"eat", "tea", "tan", "ate", "nat", "bat"},
+			"output": []interface{}{[]interface{}{"eat", "tea", "ate"}, []interface{}{"tan", "nat"}, []interface{}{"bat"}},
+		},
+		{
+			"words":  []interface{}{"abc", "bca", "cab", "dog", "god", "xyz"},
+			"output": []interface{}{[]interface{}{"abc", "bca", "cab"}, []interface{}{"dog", "god"}, []interface{}{"xyz"}},
+		},
+		{
+			"words":  []interface{}{"apple", "pale", "peal", "leap"},
+			"output": []interface{}{[]interface{}{"apple"}, []interface{}{"pale", "peal", "leap"}},
+		},
+	}
 
-	// returnType := "string[][]"
+	returnType := "string[][]"
 
 	// 	code := `function solve(root, targetSum) {
 	//     if (!root) return false;
@@ -124,7 +124,7 @@ func processCompilationRequest() {
 
 	// 	returnType := "bool"
 
-	// 	code := `var solve = function(root, p, q) {
+	// 	code := `function solve(root: TreeNode | null, p: TreeNode, q: TreeNode): TreeNode | null {
 	//     if (!root || root === p || root === q) return root;
 
 	//     const left = solve(root.left, p, q);
@@ -133,7 +133,7 @@ func processCompilationRequest() {
 	//     if (left && right) return root;
 
 	//     return left ? left : right;
-	// };`
+	// }`
 
 	// 	args := map[string]string{
 	// 		"root": "TreeNode",
@@ -164,42 +164,42 @@ func processCompilationRequest() {
 
 	// 	returnType := "TreeNode-int"
 
-	code := `function solve(head) {
-    let prev = null;
-    let current = head;
+	// 	code := `function solve(head: ListNode | null) {
+	//     let prev = null;
+	//     let current = head;
 
-    while (current !== null) {
-        let nextNode = current.next;
-        current.next = prev;
-        prev = current;
-        current = nextNode;
-    }
+	//     while (current !== null) {
+	//         let nextNode = current.next;
+	//         current.next = prev;
+	//         prev = current;
+	//         current = nextNode;
+	//     }
 
-    return prev;
-}`
+	//     return prev;
+	// }`
 
-	// Input type: A linked list (represented as an array for test cases)
-	args := map[string]string{
-		"head": "ListNode", // The linked list to be reversed
-	}
+	// 	// Input type: A linked list (represented as an array for test cases)
+	// 	args := map[string]string{
+	// 		"head": "ListNode", // The linked list to be reversed
+	// 	}
 
-	// Test cases for the reverse linked list problem
-	testCases := []map[string]interface{}{
-		{
-			"head":   []interface{}{1, 2, 3, 4, 5}, // Initial linked list: 1 -> 2 -> 3 -> 4 -> 5
-			"output": []interface{}{5, 4, 3, 2, 1}, // Reversed linked list: 5 -> 4 -> 3 -> 2 -> 1
-		},
-		{
-			"head":   []interface{}{1, 2}, // Initial linked list: 1 -> 2
-			"output": []interface{}{2, 1}, // Reversed linked list: 2 -> 1
-		},
-		{
-			"head":   []interface{}{}, // Empty list
-			"output": []interface{}{}, // Still empty after reversal
-		},
-	}
+	// 	// Test cases for the reverse linked list problem
+	// 	testCases := []map[string]interface{}{
+	// 		{
+	// 			"head":   []interface{}{1, 2, 3, 4, 5}, // Initial linked list: 1 -> 2 -> 3 -> 4 -> 5
+	// 			"output": []interface{}{5, 4, 3, 2, 1}, // Reversed linked list: 5 -> 4 -> 3 -> 2 -> 1
+	// 		},
+	// 		{
+	// 			"head":   []interface{}{1, 2}, // Initial linked list: 1 -> 2
+	// 			"output": []interface{}{2, 1}, // Reversed linked list: 2 -> 1
+	// 		},
+	// 		{
+	// 			"head":   []interface{}{}, // Empty list
+	// 			"output": []interface{}{}, // Still empty after reversal
+	// 		},
+	// 	}
 
-	returnType := "ListNode"
+	// 	returnType := "ListNode"
 
 	var wrappedCode string
 
@@ -221,6 +221,9 @@ func processCompilationRequest() {
 
 	case "javascript":
 		wrappedCode = testharness.JavaScriptHarness(code, args, testCases, returnType)
+
+	case "typescript":
+		wrappedCode = testharness.TypeScriptHarness(code, args, testCases, returnType)
 
 	default:
 		fmt.Println("Unsupported language")

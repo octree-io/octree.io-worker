@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	utils "octree.io-worker/utils/converters"
+	utils "octree.io-worker/internal/utils/converters"
 )
 
 func PythonHarness(code string, args map[string]string, testCases []map[string]interface{}, returnType string) string {
