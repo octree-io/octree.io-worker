@@ -167,7 +167,7 @@ function runTestCases() {
                 console.log(JSON.stringify(treeToList(result)));
             }
         } else if (result instanceof ListNode) {
-            console.log(JSON.stringifylinkedListToList(result)));
+            console.log(JSON.stringify(linkedListToList(result)));
         } else {
             if (!result && (returnType === "ListNode" || returnType === "TreeNode")) {
                 console.log([]);
