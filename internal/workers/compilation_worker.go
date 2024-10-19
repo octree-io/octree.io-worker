@@ -316,17 +316,6 @@ func processCompilationRequest(msg ampq.Delivery) {
 
 	outputString := fmt.Sprintf(`{"stdout": "%s", "stderr": "%s", "execTime": %s}`, stdout, stderr, execTime)
 
-	updateQuery := `
-    UPDATE submissions
-		SET output = $1
-		WHERE submission_id = $2;
-  `
-
-	_, err = pgPool.Exec(ctx, updateQuery, outputString, submissionId)
-	if err != nil {
-		log.Printf("Failed to update submission: %v\n", err)
-	}
-
 	status := "SUCCEEDED"
 	if runType == "submit" {
 		result := facade.JudgeTestCases(outputs, stdout, answerAnyOrder, deepSort, returnType)
@@ -334,6 +323,17 @@ func processCompilationRequest(msg ampq.Delivery) {
 		if !result {
 			status = "FAILED"
 		}
+	}
+
+	updateQuery := `
+    UPDATE submissions
+		SET output = $1, status = $2
+		WHERE submission_id = $3;
+  `
+
+	_, err = pgPool.Exec(ctx, updateQuery, outputString, status, submissionId)
+	if err != nil {
+		log.Printf("Failed to update submission: %v\n", err)
 	}
 
 	responseMessage := CompilationResponseMessage{
