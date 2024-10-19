@@ -129,6 +129,14 @@ def linked_list_to_list(ll)
     lst
 end
 
+def custom_print(result)
+    if result.nil?
+        puts "null"
+    else
+        puts result
+    end
+end
+
 def run_test_cases
     ruby_args = %s
     test_cases = %s
@@ -194,7 +202,7 @@ def run_test_cases
 						# Wrap the string in quotes
 						puts "\"#{result}\""
 					else
-						puts result
+						custom_print(result)
 					end
 				end
     end
@@ -202,8 +210,6 @@ end
 
 run_test_cases
 `, code, rubyArgs, rubyTestCases, returnType)
-
-	fmt.Println(rubyCode)
 
 	return rubyCode
 }

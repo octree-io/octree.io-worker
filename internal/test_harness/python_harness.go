@@ -116,6 +116,16 @@ def list_to_linked_list(lst):
         tail = tail.next
     return dummy.next
 
+def custom_print(val):
+    if val is True:
+        print("true")
+    elif val is False:
+        print("false")
+    elif val is None:
+        print("null")
+    else:
+        print(val)
+
 def run_test_cases():
     solution = Solution()
     py_args = %s
@@ -160,7 +170,7 @@ def run_test_cases():
             if not result and return_type == "ListNode" or return_type == "TreeNode":
                 print([])
             else:
-                print(result)
+                custom_print(result)
 
 run_test_cases()
 `, code, pyArgs, pyTestCases, returnType)

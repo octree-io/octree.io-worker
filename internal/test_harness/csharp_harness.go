@@ -3,6 +3,8 @@ package testharness
 import (
 	"fmt"
 	"strings"
+
+	"octree.io-worker/internal/utils"
 )
 
 func CsharpHarness(code string, args map[string]string, testCases []map[string]interface{}, returnType string) string {
@@ -226,9 +228,13 @@ public static class TestHelper
         {
             PrintTreeNode((TreeNode)result);
         }
+        else if (result is bool)
+        {
+            Console.WriteLine(result.ToString().ToLower());
+        }
         else
         {
-            Console.WriteLine(result);
+            Console.WriteLine(result == null ? "null" : result);
         }
     }
 
@@ -331,8 +337,6 @@ public class TestHarness
 
 `, returnType, code, generateCsharpTestCases(testCases, args), generateCsharpArgs(args), generateCsharpArgNames(args), generateCsharpParameters(args))
 
-	fmt.Println(harnessCode)
-
 	return harnessCode
 }
 
@@ -343,7 +347,7 @@ func generateCsharpTestCases(testCases []map[string]interface{}, args map[string
 		result.WriteString(fmt.Sprintf("\nvar testCase%d = new Dictionary<string, object>();\n", index))
 
 		for arg, argType := range args {
-			value := testCase[arg]
+			value := utils.ConvertBSONValue(testCase[arg])
 
 			switch argType {
 			case "int[]":

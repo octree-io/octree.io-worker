@@ -3,6 +3,8 @@ package testharness
 import (
 	"fmt"
 	"strings"
+
+	"octree.io-worker/internal/utils"
 )
 
 func CppHarness(code string, args map[string]string, testCases []map[string]interface{}, returnType string) string {
@@ -268,7 +270,7 @@ func generateCppTestCases(args map[string]string, testCases []map[string]interfa
 		caseLines = append(caseLines, fmt.Sprintf("std::map<std::string, std::any> testCase%d;", i))
 
 		for arg, argType := range args {
-			value := testCase[arg]
+			value := utils.ConvertBSONValue(testCase[arg])
 
 			switch argType {
 			case "int[]":

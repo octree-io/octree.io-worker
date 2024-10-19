@@ -351,7 +351,7 @@ func generateJavaTestCases(testCases []map[string]interface{}, args map[string]s
 		result.WriteString(fmt.Sprintf("\nMap<String, Object> testCase%d = new HashMap<>();\n", index))
 
 		for arg, argType := range args {
-			value := testCase[arg]
+			value := utils.ConvertBSONValue(testCase[arg])
 
 			switch argType {
 			case "int[]":

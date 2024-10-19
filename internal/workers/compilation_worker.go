@@ -1,18 +1,24 @@
 package workers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	ampq "github.com/rabbitmq/amqp091-go"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+
+	"octree.io-worker/internal/clients"
 	"octree.io-worker/internal/facade"
 	testharness "octree.io-worker/internal/test_harness"
-	"octree.io-worker/internal/utils/converters"
+	"octree.io-worker/internal/utils"
 )
 
-type StdoutItem struct {
+type OutputItem struct {
 	Text string `json:"text"`
 }
 
@@ -30,8 +36,8 @@ type CompilerExplorerResponse struct {
 	Code                       int          `json:"code"`
 	OkToCache                  bool         `json:"okToCache"`
 	TimedOut                   bool         `json:"timedOut"`
-	Stdout                     []StdoutItem `json:"stdout"`
-	Stderr                     []string     `json:"stderr"`
+	Stdout                     []OutputItem `json:"stdout"`
+	Stderr                     []OutputItem `json:"stderr"`
 	Truncated                  bool         `json:"truncated"`
 	ExecTime                   string       `json:"execTime"`
 	ProcessExecutionResultTime float64      `json:"processExecutionResultTime"`
@@ -39,167 +45,194 @@ type CompilerExplorerResponse struct {
 	BuildResult                BuildResult  `json:"buildResult"`
 }
 
-func processCompilationRequest() {
-	start := time.Now()
+type CompilationRequestMessage struct {
+	SubmissionId string `json:"submissionId"`
+	SocketId     string `json:"socketId"`
+}
 
-	language := "typescript"
+type CompilationResponseMessage struct {
+	SubmissionId string `json:"submissionId"`
+	SocketId     string `json:"socketId"`
+	RoomId       string `json:"roomId"`
+	Username     string `json:"username"`
+	Language     string `json:"language"`
+	Type         string `json:"type"`
+	Status       string `json:"status"`
+	Stdout       string `json:"stdout"`
+	Stderr       string `json:"stderr"`
+	ExecTime     string `json:"execTime"`
+}
 
-	code := `function solve(words: any) {
-	  let anagramGroups: any = {};
+func queryProblemByID(client *mongo.Client, id int) (bson.M, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	  for (let word of words) {
-	    // Sort the word to use as the key for grouping anagrams
-	    let sortedWord = word.split("").sort().join("");
+	collection := client.Database("octree").Collection("problems")
 
-	    // Insert the word into the corresponding anagram group
-	    if (!anagramGroups[sortedWord]) {
-	      anagramGroups[sortedWord] = [];
-	    }
-	    anagramGroups[sortedWord].push(word);
-	  }
+	filter := bson.M{"id": id}
 
-	  // Collect all the grouped anagrams into a result array
-	  let result = [];
-	  for (let key in anagramGroups) {
-	    result.push(anagramGroups[key]);
-	  }
-
-	  return result;
-	}`
-
-	args := map[string]string{
-		"words": "string[]",
+	var result bson.M
+	err := collection.FindOne(ctx, filter).Decode(&result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find problem by ID: %v", err)
 	}
 
-	testCases := []map[string]interface{}{
-		{
-			"words":  []interface{}{"eat", "tea", "tan", "ate", "nat", "bat"},
-			"output": []interface{}{[]interface{}{"eat", "tea", "ate"}, []interface{}{"tan", "nat"}, []interface{}{"bat"}},
-		},
-		{
-			"words":  []interface{}{"abc", "bca", "cab", "dog", "god", "xyz"},
-			"output": []interface{}{[]interface{}{"abc", "bca", "cab"}, []interface{}{"dog", "god"}, []interface{}{"xyz"}},
-		},
-		{
-			"words":  []interface{}{"apple", "pale", "peal", "leap"},
-			"output": []interface{}{[]interface{}{"apple"}, []interface{}{"pale", "peal", "leap"}},
-		},
+	return result, nil
+}
+
+func sendCompilationResponseMessage(response CompilationResponseMessage) error {
+	conn, err := clients.GetRabbitMQConnection()
+	if err != nil {
+		return fmt.Errorf("failed to get RabbitMQ connection: %w", err)
 	}
 
-	returnType := "string[][]"
+	ch, err := conn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to open a RabbitMQ channel: %w", err)
+	}
+	defer ch.Close()
 
-	// 	code := `function solve(root, targetSum) {
-	//     if (!root) return false;
+	queueName := "compilation_responses"
+	_, err = ch.QueueDeclare(
+		queueName, // queue name
+		true,      // durable
+		false,     // delete when unused
+		false,     // exclusive
+		false,     // no-wait
+		nil,       // arguments
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare queue: %w", err)
+	}
 
-	//     if (!root.left && !root.right) {
-	//         return targetSum === root.val;
-	//     }
+	messageBody, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal response message: %w", err)
+	}
 
-	//     const remainingSum = targetSum - root.val;
-	//     return solve(root.left, remainingSum) || solve(root.right, remainingSum);
-	// }`
+	err = ch.Publish(
+		"",        // exchange
+		queueName, // routing key (queue name)
+		false,     // mandatory
+		false,     // immediate
+		ampq.Publishing{
+			ContentType: "application/json",
+			Body:        messageBody,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to publish compilation response message: %w", err)
+	}
 
-	// 	args := map[string]string{
-	// 		"root":      "TreeNode",
-	// 		"targetSum": "int",
-	// 	}
+	log.Printf("Compilation response message sent to queue: %s\n", queueName)
+	return nil
+}
 
-	// 	testCases := []map[string]interface{}{
-	// 		{
-	// 			"root":      []interface{}{5, 4, 8, 11, nil, 13, 4, 7, 2, nil, nil, nil, 1},
-	// 			"targetSum": 22,
-	// 			"output":    true,
-	// 		},
-	// 		{
-	// 			"root":      []interface{}{1, 2, 3},
-	// 			"targetSum": 5,
-	// 			"output":    false,
-	// 		},
-	// 		{
-	// 			"root":      []interface{}{1, 2},
-	// 			"targetSum": 1,
-	// 			"output":    false,
-	// 		},
-	// 	}
+func processCompilationRequest(msg ampq.Delivery) {
+	var message CompilationRequestMessage
 
-	// 	returnType := "bool"
+	err := json.Unmarshal(msg.Body, &message)
+	if err != nil {
+		log.Printf("Failed to parse message to JSON: %v\n", err)
+		return
+	}
 
-	// 	code := `function solve(root: TreeNode | null, p: TreeNode, q: TreeNode): TreeNode | null {
-	//     if (!root || root === p || root === q) return root;
+	submissionId := message.SubmissionId
+	socketId := message.SocketId
 
-	//     const left = solve(root.left, p, q);
-	//     const right = solve(root.right, p, q);
+	if submissionId == "" {
+		log.Println("SubmissionId is missing or empty")
+		return
+	}
 
-	//     if (left && right) return root;
+	if socketId == "" {
+		log.Println("SocketId is missing or empty")
+		return
+	}
 
-	//     return left ? left : right;
-	// }`
+	ctx := context.Background()
+	pgPool, err := clients.GetPostgresPool()
+	if err != nil {
+		log.Fatalf("Unable to connect to PostgreSQL: %v\n", err)
+	}
 
-	// 	args := map[string]string{
-	// 		"root": "TreeNode",
-	// 		"p":    "TreeNode",
-	// 		"q":    "TreeNode",
-	// 	}
+	var (
+		problemId int
+		language  string
+		code      string
+		runType   string
+		roomId    string
+		username  string
+	)
 
-	// 	testCases := []map[string]interface{}{
-	// 		{
-	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
-	// 			"p":      5,                                                  // Node p
-	// 			"q":      1,                                                  // Node q
-	// 			"output": 3,                                                  // Expected LCA
-	// 		},
-	// 		{
-	// 			"root":   []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, // Tree structure
-	// 			"p":      5,                                                  // Node p
-	// 			"q":      4,                                                  // Node q
-	// 			"output": 5,                                                  // Expected LCA
-	// 		},
-	// 		{
-	// 			"root":   []interface{}{1, 2}, // Tree structure
-	// 			"p":      1,                   // Node p
-	// 			"q":      2,                   // Node q
-	// 			"output": 1,                   // Expected LCA
-	// 		},
-	// 	}
+	err = pgPool.QueryRow(
+		ctx,
+		"SELECT problem_id, language, code, type, room_id, username FROM submissions WHERE submission_id=$1", submissionId,
+	).Scan(&problemId, &language, &code, &runType, &roomId, &username)
 
-	// 	returnType := "TreeNode-int"
+	if err != nil {
+		log.Printf("Query failed: %v\n", err)
+		return
+	}
+	log.Printf("Problem ID: %d\nLanguage: %s\nCode: %s\nRun type: %s\nRoom ID: %s\n", problemId, language, code, runType, roomId)
 
-	// 	code := `function solve(head: ListNode | null) {
-	//     let prev = null;
-	//     let current = head;
+	client, err := clients.GetMongoClient()
+	if err != nil {
+		log.Fatalf("MongoDB connection error: %v", err)
+	}
 
-	//     while (current !== null) {
-	//         let nextNode = current.next;
-	//         current.next = prev;
-	//         prev = current;
-	//         current = nextNode;
-	//     }
+	problem, err := queryProblemByID(client, problemId)
+	if err != nil {
+		log.Printf("Error finding problem: %v", err)
+		return
+	}
 
-	//     return prev;
-	// }`
+	args := utils.ConvertBsonMToStringMap(problem["args"].(bson.M))
+	testCases := []map[string]interface{}{}
+	outputs := []map[string]interface{}{}
+	returnType := problem["returnType"].(string)
 
-	// 	// Input type: A linked list (represented as an array for test cases)
-	// 	args := map[string]string{
-	// 		"head": "ListNode", // The linked list to be reversed
-	// 	}
+	answerAnyOrder, ok := problem["answerAnyOrder"].(bool)
+	if !ok {
+		answerAnyOrder = false
+	}
 
-	// 	// Test cases for the reverse linked list problem
-	// 	testCases := []map[string]interface{}{
-	// 		{
-	// 			"head":   []interface{}{1, 2, 3, 4, 5}, // Initial linked list: 1 -> 2 -> 3 -> 4 -> 5
-	// 			"output": []interface{}{5, 4, 3, 2, 1}, // Reversed linked list: 5 -> 4 -> 3 -> 2 -> 1
-	// 		},
-	// 		{
-	// 			"head":   []interface{}{1, 2}, // Initial linked list: 1 -> 2
-	// 			"output": []interface{}{2, 1}, // Reversed linked list: 2 -> 1
-	// 		},
-	// 		{
-	// 			"head":   []interface{}{}, // Empty list
-	// 			"output": []interface{}{}, // Still empty after reversal
-	// 		},
-	// 	}
+	deepSort, ok := problem["deepSort"].(bool)
+	if !ok {
+		deepSort = false
+	}
 
-	// 	returnType := "ListNode"
+	log.Printf("answerAnyOrder: %v\ndeepSort: %v\n", answerAnyOrder, deepSort)
+
+	testCasesKey := "sampleTestCases"
+	if runType == "submit" {
+		testCasesKey = "judgeTestCases"
+	}
+
+	for _, entry := range problem[testCasesKey].(bson.A) {
+		entryBytes, err := bson.Marshal(entry)
+		if err != nil {
+			log.Printf("Failed to marshal bson.D: %v", err)
+			return
+		}
+
+		var entryMap bson.M
+		err = bson.Unmarshal(entryBytes, &entryMap)
+		if err != nil {
+			log.Printf("Failed to unmarshal to bson.M: %v", err)
+			return
+		}
+
+		input := map[string]interface{}(entryMap["input"].(bson.M))
+		output := entryMap["output"]
+
+		outputMap := map[string]interface{}{
+			"output": utils.ConvertBsonToNative(output),
+		}
+
+		testCases = append(testCases, input)
+		outputs = append(outputs, outputMap)
+	}
 
 	var wrappedCode string
 
@@ -230,26 +263,95 @@ func processCompilationRequest() {
 		return
 	}
 
-	output, err := facade.CompilerExplorer(language, wrappedCode)
-	if err != nil {
-		log.Printf("Error while executing compile: %v", err)
+	var stdout, stderr, execTime string
+
+	switch language {
+	case "typescript":
+		start := time.Now()
+		stdout, stderr, err = facade.ExecuteTypeScript(language, wrappedCode)
+		elapsed := time.Since(start).Milliseconds()
+
+		execTime = strconv.Itoa(int(elapsed))
+
+		if err != nil {
+			fmt.Println("Error while executing TypeScript")
+		}
+
+	case "javascript":
+		start := time.Now()
+		stdout, stderr, err = facade.ExecuteJavaScript(language, wrappedCode)
+		elapsed := time.Since(start).Milliseconds()
+		execTime = strconv.Itoa(int(elapsed))
+		if err != nil {
+			fmt.Println("Error while executing JavaScript")
+		}
+
+	default:
+		start := time.Now()
+
+		output, err := facade.CompilerExplorer(language, wrappedCode)
+		if err != nil {
+			log.Printf("Error while executing compile: %v", err)
+		}
+
+		var jsonOutput CompilerExplorerResponse
+		json.Unmarshal(([]byte)(output), &jsonOutput)
+
+		elapsed := time.Since(start).Milliseconds()
+
+		execTime = jsonOutput.ExecTime
+
+		for _, out := range jsonOutput.Stdout {
+			stdout += out.Text + "\n"
+		}
+
+		for _, err := range jsonOutput.Stderr {
+			stderr += err.Text + "\n"
+		}
+
+		log.Printf("Request took %s to execute and %s to run", execTime, strconv.Itoa(int(elapsed)))
 	}
 
-	var jsonOutput CompilerExplorerResponse
-	json.Unmarshal(([]byte)(output), &jsonOutput)
+	fmt.Printf("Exec time: %s\n", execTime)
 
-	elapsed := time.Since(start)
+	outputString := fmt.Sprintf(`{"stdout": "%s", "stderr": "%s", "execTime": %s}`, stdout, stderr, execTime)
 
-	log.Printf("Request took %s to execute", elapsed)
+	updateQuery := `
+    UPDATE submissions
+		SET output = $1
+		WHERE submission_id = $2;
+  `
 
-	if len(testCases) != len(jsonOutput.Stdout) {
-		log.Println("Test cases and stdout lengths differ")
-	} else {
-		for i, item := range jsonOutput.Stdout {
-			convertedJson, _ := converters.JsonToPython(testCases[i]["output"])
-			log.Printf("Expected: %s, Actual: %s, Equivalence: %t",
-				convertedJson, item.Text, convertedJson == item.Text)
+	_, err = pgPool.Exec(ctx, updateQuery, outputString, submissionId)
+	if err != nil {
+		log.Printf("Failed to update submission: %v\n", err)
+	}
+
+	status := "SUCCEEDED"
+	if runType == "submit" {
+		result := facade.JudgeTestCases(outputs, stdout, answerAnyOrder, deepSort, returnType)
+		fmt.Printf("Verdict: %v\n", result)
+		if !result {
+			status = "FAILED"
 		}
+	}
+
+	responseMessage := CompilationResponseMessage{
+		SubmissionId: submissionId,
+		SocketId:     socketId,
+		Username:     username,
+		RoomId:       roomId,
+		Language:     language,
+		Type:         runType,
+		Status:       status,
+		Stdout:       stdout,
+		Stderr:       stderr,
+		ExecTime:     execTime,
+	}
+
+	err = sendCompilationResponseMessage(responseMessage)
+	if err != nil {
+		log.Printf("Failed to send a compilation response message: %v", err)
 	}
 }
 
@@ -257,7 +359,7 @@ func SpawnCompilationWorker(id int, msgs <-chan ampq.Delivery) {
 	for msg := range msgs {
 		log.Printf("[Compilation Worker %d] Received message: %s", id, msg.Body)
 
-		processCompilationRequest()
+		processCompilationRequest(msg)
 
 		if err := msg.Ack(false); err != nil {
 			log.Printf("[Compilation Worker %d] Failed to ack message: %v", id, err)

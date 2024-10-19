@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"log"
-	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/joho/godotenv"
-	ampq "github.com/rabbitmq/amqp091-go"
+	"octree.io-worker/internal/clients"
 	"octree.io-worker/internal/workers"
 )
 
@@ -20,8 +21,7 @@ func main() {
 	err := godotenv.Load()
 	failOnError(err, "Failed to load .env")
 
-	log.Println("Connecting to RabbitMQ")
-	conn, err := ampq.Dial(os.Getenv("RABBITMQ_URL"))
+	conn, err := clients.GetRabbitMQConnection()
 	failOnError(err, "Error connecting to RabbitMQ")
 	defer conn.Close()
 
@@ -71,7 +71,7 @@ func main() {
 	)
 	failOnError(err, "Failed to register a consumer for trivia_submissions")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	numCompilationRequestWorkers := 5
@@ -86,4 +86,6 @@ func main() {
 
 	log.Println("Workers are running. Exit with CTRL + C")
 	<-ctx.Done()
+
+	clients.CleanupDbConnections()
 }
