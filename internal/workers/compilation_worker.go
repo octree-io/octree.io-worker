@@ -39,7 +39,7 @@ type CompilerExplorerResponse struct {
 	Stdout                     []OutputItem `json:"stdout"`
 	Stderr                     []OutputItem `json:"stderr"`
 	Truncated                  bool         `json:"truncated"`
-	ExecTime                   string       `json:"execTime"`
+	ExecTime                   int          `json:"execTime"`
 	ProcessExecutionResultTime float64      `json:"processExecutionResultTime"`
 	DidExecute                 bool         `json:"didExecute"`
 	BuildResult                BuildResult  `json:"buildResult"`
@@ -263,7 +263,8 @@ func processCompilationRequest(msg ampq.Delivery) {
 		return
 	}
 
-	var stdout, stderr, execTime string
+	var stdout, stderr string
+	var execTime int
 
 	switch language {
 	case "typescript":
@@ -271,7 +272,7 @@ func processCompilationRequest(msg ampq.Delivery) {
 		stdout, stderr, err = facade.ExecuteTypeScript(language, wrappedCode)
 		elapsed := time.Since(start).Milliseconds()
 
-		execTime = strconv.Itoa(int(elapsed))
+		execTime = int(elapsed)
 
 		if err != nil {
 			fmt.Println("Error while executing TypeScript")
@@ -281,7 +282,7 @@ func processCompilationRequest(msg ampq.Delivery) {
 		start := time.Now()
 		stdout, stderr, err = facade.ExecuteJavaScript(language, wrappedCode)
 		elapsed := time.Since(start).Milliseconds()
-		execTime = strconv.Itoa(int(elapsed))
+		execTime = int(elapsed)
 		if err != nil {
 			fmt.Println("Error while executing JavaScript")
 		}
@@ -299,7 +300,7 @@ func processCompilationRequest(msg ampq.Delivery) {
 
 		elapsed := time.Since(start).Milliseconds()
 
-		execTime = jsonOutput.ExecTime
+		execTime = int(jsonOutput.ExecTime)
 
 		for _, out := range jsonOutput.Stdout {
 			stdout += out.Text + "\n"
@@ -309,12 +310,12 @@ func processCompilationRequest(msg ampq.Delivery) {
 			stderr += err.Text + "\n"
 		}
 
-		log.Printf("Request took %s to execute and %s to run", execTime, strconv.Itoa(int(elapsed)))
+		log.Printf("Request took %s to execute and %s to run", strconv.Itoa(execTime), strconv.Itoa(int(elapsed)))
 	}
 
-	fmt.Printf("Exec time: %s\n", execTime)
+	fmt.Printf("Exec time: %s\n", strconv.Itoa(execTime))
 
-	outputString := fmt.Sprintf(`{"stdout": "%s", "stderr": "%s", "execTime": %s}`, stdout, stderr, execTime)
+	outputString := fmt.Sprintf(`{"stdout": "%s", "stderr": "%s", "execTime": %s}`, stdout, stderr, strconv.Itoa(execTime))
 
 	status := "SUCCEEDED"
 	if runType == "submit" {
@@ -346,7 +347,7 @@ func processCompilationRequest(msg ampq.Delivery) {
 		Status:       status,
 		Stdout:       stdout,
 		Stderr:       stderr,
-		ExecTime:     execTime,
+		ExecTime:     strconv.Itoa(execTime),
 	}
 
 	err = sendCompilationResponseMessage(responseMessage)
